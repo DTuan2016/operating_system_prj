@@ -1,0 +1,5 @@
+*.o
+
+src/*.o
+
+monitor.log
