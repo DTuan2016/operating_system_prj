@@ -88,12 +88,20 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list){
 
                 if(block){
                     LOG_ERROR("Policy block syscall #%ld (%s) - killing child %ld", sc, name, (long)child);
-                    if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
-                        LOG_WARN("ptrace(KILL) failed: %s", strerror(errno));
-                        kill(child, SIGKILL);
-                    }
-                    waitpid(child, &status, 0);
-                    return 1;
+                    // if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
+                    //     LOG_WARN("ptrace(KILL) failed: %s", strerror(errno));
+                    //     kill(child, SIGKILL);
+                    // }
+                    // kill(child, SIGKILL);
+                    // waitpid(child, &status, 0);
+                    // return 1;
+                    regs.rax = -EPERM;                        // trả lỗi cho user program
+                    ptrace(PTRACE_SETREGS, child, NULL, &regs);
+
+                    in_syscall = 1;                            // đánh dấu đang ở exit-phase của syscall
+
+                    ptrace(PTRACE_SYSCALL, child, NULL, NULL); // tiếp tục theo dõi
+                    continue;                          
                 }
                 in_syscall = 1;
             }
