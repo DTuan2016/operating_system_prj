@@ -95,6 +95,8 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list){
                     // kill(child, SIGKILL);
                     // waitpid(child, &status, 0);
                     // return 1;
+
+                    regs.orig_rax = -1; // Tuyen add: "vo hieu hoa syscall"
                     regs.rax = -EPERM;                        // trả lỗi cho user program
                     ptrace(PTRACE_SETREGS, child, NULL, &regs);
 
