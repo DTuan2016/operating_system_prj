@@ -13,6 +13,6 @@
 #define SYSCALL_STOP 0x80
 
 void usage(char *p);
-int monitor_loop(pid_t child, int mode_allow, list_syscall *list);
+int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode);
 
 #endif /*MONITOR_H*/

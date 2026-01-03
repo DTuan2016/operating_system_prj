@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
        then either -d:list or -e:list, then optional '--', then program */
     int mode_allow = -1; /* 1 = allow, 0 = deny */
     char *liststr = NULL;
+    int kill_mode = 0; /* 1 = kill on block, 0 = block and notify */
     int i = 1;
 
     /* optional -m mode */
@@ -43,13 +44,21 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* parse -d: or -e: until encountering '--' or program */
+    /* parse -d: or -e: or -kill until encountering '--' or program */
     while (i < argc && argv[i][0] == '-') {
         if (strncmp(argv[i], "-d:", 3) == 0) { mode_allow = 0; liststr = argv[i] + 3; i++; }
         else if (strncmp(argv[i], "-e:", 3) == 0) { mode_allow = 1; liststr = argv[i] + 3; i++; }
+        else if (strcmp(argv[i], "-kill") == 0) { kill_mode = 1; i++; }
         else break;
     }
-    if (i < argc && strcmp(argv[i], "--") == 0) i++;
+    if (i < argc && strcmp(argv[i], "--") == 0) {
+        i++;
+        /* Check for -kill after -- */
+        if (i < argc && strcmp(argv[i], "-kill") == 0) {
+            kill_mode = 1;
+            i++;
+        }
+    }
     if (mode_allow == -1) { usage(argv[0]); return 1; }
     if (i >= argc) { usage(argv[0]); return 1; }
 
@@ -100,7 +109,7 @@ int main(int argc, char **argv) {
         }
 
         /* start monitoring loop */
-        int rc = monitor_loop(child, mode_allow, &rules);
+        int rc = monitor_loop(child, mode_allow, &rules, kill_mode);
 
         destroy_list(&rules); // CORRECT: Clean up memory before exit
         log_close();
