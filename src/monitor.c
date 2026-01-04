@@ -1,19 +1,24 @@
 #include <monitor.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
 
 void usage(char *p){
     fprintf(stderr,
-        "Usage: %s (-d:sys1,sys2 | -e:sys1,sys2) -- program [args...]\n"
+        "Usage: %s (-d:sys1,sys2 | -e:sys1,sys2) [-kill] -- program [args...]\n"
         "  -d: deny list (block listed syscalls)\n"
         "  -e: allow list (only listed syscalls allowed; others blocked)\n"
+        "  -kill: kill process when syscall is blocked (default: block and notify)\n"
         "  -m mode (optional, 'ptrace' default)\n"
         "Examples:\n"
         "  %s -d:open,fork -- /bin/ls -l\n"
-        "  %s -e:read,write,exit -- /path/to/suspected\n",
-        p, p, p);
+        "  %s -e:read,write,exit -- /path/to/suspected\n"
+        "  %s -d:clone -kill -- ./test/open_test\n",
+        p, p, p, p);
 }
 
-int monitor_loop(pid_t child, int mode_allow, list_syscall *list){
+int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode){
     int status;
     struct user_regs_struct regs;
     int in_syscall = 0;
@@ -87,14 +92,17 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list){
                 }
 
                 if(block){
-                    LOG_ERROR("Policy block syscall #%ld (%s) - killing child %ld", sc, name, (long)child);
-                    // if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
-                    //     LOG_WARN("ptrace(KILL) failed: %s", strerror(errno));
-                    //     kill(child, SIGKILL);
-                    // }
-                    // kill(child, SIGKILL);
-                    // waitpid(child, &status, 0);
-                    // return 1;
+                    if(kill_mode){
+                        // Kill tiến trình mà không hiển thị thông báo
+                        if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
+                            kill(child, SIGKILL);
+                        }
+                        waitpid(child, &status, 0);
+                        return 1;
+                    } else {
+                        // Hiển thị thông báo khi không kill
+                        fprintf(stderr, COLOR_YELLOW "[WARN] Syscall #%ld (%s) đang bị chặn\n" COLOR_RESET, sc, name);
+                        LOG_ERROR("Policy block syscall #%ld (%s) - blocking (not killing)", sc, name);
 
                     regs.orig_rax = -1; // Tuyen add: "vo hieu hoa syscall"
                     regs.rax = -EPERM;                        // trả lỗi cho user program
@@ -104,6 +112,7 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list){
 
                     ptrace(PTRACE_SYSCALL, child, NULL, NULL); // tiếp tục theo dõi
                     continue;                          
+                    }
                 }
                 in_syscall = 1;
             }
