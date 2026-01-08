@@ -3,9 +3,12 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include <time.h>
 
-// --- ANSI Color Codes ---
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ANSI colors */
 #define COLOR_RESET   "\033[0m"
 #define COLOR_RED     "\033[31m"
 #define COLOR_GREEN   "\033[32m"
@@ -13,15 +16,49 @@
 #define COLOR_BLUE    "\033[34m"
 #define COLOR_CYAN    "\033[36m"
 
-// --- Logging Macros ---
-#define LOG_INFO(...)  log_message("INFO", COLOR_GREEN, __VA_ARGS__)
-#define LOG_WARN(...)  log_message("WARN", COLOR_YELLOW, __VA_ARGS__)
-#define LOG_ERROR(...) log_message("ERROR", COLOR_RED, __VA_ARGS__)
-#define LOG_DEBUG(...) log_message("DEBUG", COLOR_CYAN, __VA_ARGS__)
+/* Log Level */
+typedef enum{
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_SUCCESS,
+    LOG_LEVEL_WARN,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_NONE
+}log_level_t;
 
+/* Core API */
 void log_init(const char *filename);
-void log_close();
-void log_message(const char *level, const char *color, const char *fmt, ...);
+void log_close(void);
 
+void log_set_level(log_level_t level);
+log_level_t log_get_level(void);
 
-#endif //LOG_H
+void log_message(log_level_t level , const char *color, const char *fmt, ...);
+
+/* Macros */
+#define LOG_INFO(fmt, ...)  \
+    do { log_message(LOG_LEVEL_INFO, COLOR_GREEN, fmt, ##__VA_ARGS__); } while (0)
+
+#define LOG_WARN(fmt, ...)  \
+    do { log_message(LOG_LEVEL_WARN, COLOR_YELLOW, fmt, ##__VA_ARGS__); } while (0)
+
+#define LOG_ERROR(fmt, ...) \
+    do { log_message(LOG_LEVEL_ERROR, COLOR_RED, "[%s:%d] " fmt, \
+                     __FILE__, __LINE__, ##__VA_ARGS__); } while (0)
+
+#define LOG_SUCCESS(fmt, ...)  \
+    do { log_message(LOG_LEVEL_SUCCESS, COLOR_GREEN, fmt, ##__VA_ARGS__); } while (0)
+
+#ifdef DEBUG_MODE
+#define LOG_DEBUG(fmt, ...) \
+    do { log_message(LOG_LEVEL_DEBUG, COLOR_CYAN, "[%s:%d] " fmt, \
+                     __FILE__, __LINE__, ##__VA_ARGS__); } while (0)
+#else
+#define LOG_DEBUG(fmt, ...) do {} while (0)
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* LOG_H */

@@ -10,7 +10,7 @@ void usage(char *p){
         "  -d: deny list (block listed syscalls)\n"
         "  -e: allow list (only listed syscalls allowed; others blocked)\n"
         "  -kill: kill process when syscall is blocked (default: block and notify)\n"
-        "  -m mode (optional, 'ptrace' default)\n"
+        "  -h: help\n"
         "Examples:\n"
         "  %s -d:open,fork -- /bin/ls -l\n"
         "  %s -e:read,write,exit -- /path/to/suspected\n"
@@ -72,14 +72,10 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode)
 
             if(!in_syscall){
                 long sc = regs.orig_rax;
-
-                const char *name = syscall_lookup_name(sc); 
+                const char *name = syscall_lookup_name(sc);
                 if(!name) name = "unknown";
-
                 LOG_INFO("PID %d syscall #%ld (%s)", child, sc, name);
-
                 int block = 0;
-
                 if(mode_allow){
                     if(!has_in_list(list, sc)){
                         block = 1;
@@ -93,7 +89,8 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode)
 
                 if(block){
                     if(kill_mode){
-                        // Kill tiến trình mà không hiển thị thông báo
+                        fprintf(stderr, COLOR_YELLOW "[WARN] Syscall #%ld (%s) đang bị chặn\n" COLOR_RESET, sc, name);
+                        LOG_ERROR("Policy block syscall #%ld (%s) - Killing the process", sc, name);
                         if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
                             kill(child, SIGKILL);
                         }
@@ -102,16 +99,19 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode)
                     } else {
                         // Hiển thị thông báo khi không kill
                         fprintf(stderr, COLOR_YELLOW "[WARN] Syscall #%ld (%s) đang bị chặn\n" COLOR_RESET, sc, name);
-                        LOG_ERROR("Policy block syscall #%ld (%s) - blocking (not killing)", sc, name);
+                        LOG_WARN("Policy block syscall #%ld (%s) - blocking (not killing)", sc, name);
+                        /*Set orig_rax to -1 -> No system call is called */
+                        regs.orig_rax = -1;
+                        /*Set rax to -EPERM -> Operation not permitted*/
+                        regs.rax = -EPERM;
+                        
+                        ptrace(PTRACE_SETREGS, child, NULL, &regs);
 
-                    regs.orig_rax = -1; // Tuyen add: "vo hieu hoa syscall"
-                    regs.rax = -EPERM;                        // trả lỗi cho user program
-                    ptrace(PTRACE_SETREGS, child, NULL, &regs);
+                        in_syscall = 1;
 
-                    in_syscall = 1;                            // đánh dấu đang ở exit-phase của syscall
-
-                    ptrace(PTRACE_SYSCALL, child, NULL, NULL); // tiếp tục theo dõi
-                    continue;                          
+                        ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+                        
+                        continue;                          
                     }
                 }
                 in_syscall = 1;

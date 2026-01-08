@@ -1,49 +1,48 @@
-CC=gcc
-CFLAGS=-Wall -Wextra -O2 -Iinclude
-LDFLAGS=
+PREFIX			= /usr/local
+BIN_DIR			= $(PREFIX)/bin
+INSTALL_PATH	= $(BIN_DIR)/$(TARGET)
 
-TARGET=saferun
+CC 				= gcc
+CFLAGS			= -Wall -Wextra -O2 -Iinclude
+TARGET 			= saferun
+SRC 			= main.c $(wildcard src/*.c)
+TEST_SRC 		= test.c
+TEST 			= test
+SYS_TABLE 		= include/syscall_table.h
 
-SRC=main.c $(wildcard src/*.c)
-OBJ=$(SRC:.c=.o)
+# Vô hiệu hóa mọi quy tắc ngầm định của Make
+.SUFFIXES:
 
-SYS_TABLE=include/syscall_table.h
+# all: $(SYS_TABLE) $(TARGET)
+all: $(TARGET) $(TEST)
 
-PREFIX=/usr/local
-BIN_DIR=$(PREFIX)/bin
-INSTALL_PATH=$(BIN_DIR)/$(TARGET)
-
-# ------------------------------------------
-
-all: $(SYS_TABLE) $(TARGET)
-
-# Generate syscall table if missing
 $(SYS_TABLE):
-	@echo "[*] Generating syscall_table.h ..."
-	@chmod +x ./configure.sh
-	@./configure.sh
+	@chmod +x ./configure.sh && ./configure.sh
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "[✔] Build completed -> ./$(TARGET)"
+$(TARGET): $(SRC)
+	@echo "[INFO] Compiling directly to binary..."
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
+	@echo "[INFO] Done! No .o files created."
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(TEST): $(TEST_SRC)
+	@echo "[INFO] Compiling directly to binary..."
+	$(CC) $(CFLAGS) $(TEST_SRC) -o $(TEST)
+	@echo "[INFO] Done! No .o files created."	
 
 clean:
-	rm -f *.o src/*.o $(TARGET)
-	@echo "[*] Clean done."
+	rm -f $(TARGET)
+	rm -f $(TEST)
 
-install: all
+install:
 	@mkdir -p $(BIN_DIR)
 	@cp $(TARGET) $(INSTALL_PATH)
 	@chmod +x $(INSTALL_PATH)
-	@echo "[✔] Installed → $(INSTALL_PATH)"
+	@echo "[INFO] Installed → $(INSTALL_PATH)"
 	@echo "Example usage:"
-	@echo "  saferun --allow read,write -- ./app"
+	@echo "  saferun -d:read,write -- ./app"
 
 uninstall:
 	rm -f $(INSTALL_PATH)
-	@echo "[✔] Uninstalled $(INSTALL_PATH)"
+	@echo "[INFO] Uninstalled $(INSTALL_PATH)"
 
 .PHONY: all clean install uninstall

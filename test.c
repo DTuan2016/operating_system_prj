@@ -35,23 +35,14 @@ int main() {
 
     /* 3. write */
     printf("\n[TEST] write(STDOUT)\n");
-    write(STDOUT_FILENO, "Hello from test.c\n", 18);
-
+    int w = write(STDOUT_FILENO, "Hello from test.c\n", 18);
+    printf("  -> write returned %d\n", w);
+    
     /* 4. read */
     printf("\n[TEST] read(STDIN)\n");
     char buf[16];
     int r = read(STDIN_FILENO, buf, sizeof(buf));
     printf("  -> read returned %d\n", r);
-
-    // printf("\n[TEST] read() (Testing from file instead of STDIN to avoid hanging)\n");
-    // fd = open("testfile.txt", O_RDONLY);
-    // char buf[16];
-    // if (fd >= 0) {
-    //     int r = read(fd, buf, sizeof(buf));
-    //     printf("  -> read returned %d bytes\n", r);
-    //     close(fd);
-    //     unlink("test_temp.txt"); // Xóa file tạm
-    // }
 
     /* 5. mmap / munmap */
     printf("\n[TEST] mmap()\n");
