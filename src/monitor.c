@@ -89,7 +89,6 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode)
 
                 if(block){
                     if(kill_mode){
-                        fprintf(stderr, COLOR_YELLOW "[WARN] Syscall #%ld (%s) đang bị chặn\n" COLOR_RESET, sc, name);
                         LOG_ERROR("Policy block syscall #%ld (%s) - Killing the process", sc, name);
                         if(ptrace(PTRACE_KILL, child, NULL, NULL) != 0){
                             kill(child, SIGKILL);
@@ -98,7 +97,6 @@ int monitor_loop(pid_t child, int mode_allow, list_syscall *list, int kill_mode)
                         return 1;
                     } else {
                         // Hiển thị thông báo khi không kill
-                        fprintf(stderr, COLOR_YELLOW "[WARN] Syscall #%ld (%s) đang bị chặn\n" COLOR_RESET, sc, name);
                         LOG_WARN("Policy block syscall #%ld (%s) - blocking (not killing)", sc, name);
                         /*Set orig_rax to -1 -> No system call is called */
                         regs.orig_rax = -1;
